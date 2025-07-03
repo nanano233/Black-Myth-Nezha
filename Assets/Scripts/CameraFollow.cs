@@ -18,7 +18,7 @@ public class Camerafollow : MonoBehaviour
         cam = GetComponent<Camera>();
     }
 
-    void LateUpdate()
+    void FixedUpdate()
     {
         if (target == null)
         {
@@ -39,10 +39,11 @@ public class Camerafollow : MonoBehaviour
                 targetPosition, ref velocity, smoothSpeed);
         }
     }
-    
+
     public void SetBounds(Vector2 min, Vector2 max)
     {
         minBounds = min;
         maxBounds = max;
     }
+    
 }
