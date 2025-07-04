@@ -67,13 +67,19 @@ public class Door : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // 增加连接房间检查
-        if (other.CompareTag("Player") && 
-            doorState == DoorState.Unlocked && 
-            connectedRoom != null) // 关键检查
+        // 增加空引用检查和安全条件
+        if (other.CompareTag("Player") &&
+            doorState == DoorState.Unlocked &&
+            connectedRoom != null &&
+            RoomManager.Instance != null) // 新增实例检查
         {
             RoomManager.Instance.EnterRoom(connectedRoom, this);
         }
+        // else if (connectedRoom == null)
+        // {
+        //     Debug.LogWarning($"门 {name} 未连接有效房间");
+        // }
+    
     }
 
     public void Lock()
@@ -133,11 +139,17 @@ public class Door : MonoBehaviour
     {
         connectedRoom = room;
         
-        // 仅当实际连接时才解锁
+        // 新增空检查和安全解锁逻辑
         if (room != null)
+        {
             doorState = DoorState.Unlocked;
+            Debug.Log($"门 {name} 已连接到房间: {room.name}");
+        }
         else
+        {
             doorState = DoorState.Unconnected;
+            Debug.LogWarning($"门 {name} 收到空房间连接");
+        }
         
         UpdateDoorAppearance();
     }

@@ -43,7 +43,15 @@ public class RoomManager : MonoBehaviour
         }
         allRooms.Clear();
         GenerateRooms();
-        EnterRoom(allRooms[0]); // 进入起始房间
+        // 添加空检查和安全进入方式
+        if (allRooms[0] != null)
+        {
+            EnterRoom(allRooms[0], null); // 明确传递null表示初始进入
+        }
+        else
+        {
+            Debug.LogError("起始房间生成失败");
+        }
     }
 
     void GenerateRooms()
@@ -281,14 +289,14 @@ public class RoomManager : MonoBehaviour
         {
             // 先设置房间属性
             room.cameraMinBounds = new Vector2(
-                position.x - roomWidth * 0.2f,
-                position.y - roomHeight * 0.2f
+                position.x - roomWidth * 0.07f,
+                position.y - roomHeight * 0.12f
             );
             room.cameraMaxBounds = new Vector2(
-                position.x + roomWidth * 0.2f,
-                position.y + roomHeight * 0.2f
+                position.x + roomWidth * 0.07f,
+                position.y + roomHeight * 0.12f
             );
-            
+
             // 后初始化房间
             room.Initialize(gridPos);
             allRooms.Add(room);
@@ -298,6 +306,27 @@ public class RoomManager : MonoBehaviour
 
     public void EnterRoom(Room newRoom, Door enteredDoor = null)
     {
+        // 添加参数验证
+        if (newRoom == null)
+        {
+            Debug.LogError("无效的房间进入请求");
+            return;
+        }
+
+        // 新增初始进入的特殊处理
+        if (enteredDoor == null && currentRoom == null)
+        {
+            Debug.Log($"初始进入房间: {newRoom.name}");
+            currentRoom = newRoom;
+            currentRoom.ActivateRoom();
+            CameraController.Instance.SetBounds(
+                newRoom.cameraMinBounds,
+                newRoom.cameraMaxBounds
+            );
+            CameraController.Instance.MoveTo(newRoom.transform.position);
+            return;
+        }
+
         // 新增传送保护
         if (currentRoom == newRoom)
         {
@@ -320,8 +349,15 @@ public class RoomManager : MonoBehaviour
             // 起始房间不锁门
             if (!newRoom.isStartingRoom)
             {
+                if (EnemyManager.Instance != null)
+                {
+                    EnemyManager.Instance.SpawnEnemiesForRoom(newRoom);
+                }
+                else
+                {
+                    Debug.LogError("EnemyManager实例未找到！");
+                }
                 newRoom.LockAllDoors(enteredDoor);
-                // newRoom.SpawnEnemies();
             }
             newRoom.isVisited = true;
         }
@@ -427,7 +463,7 @@ public class RoomManager : MonoBehaviour
         Debug.LogError($"门 {door.name} 缺少有效的方向标签");
         return Vector3.zero;
     }
-    
+
     public void ClearAllEnemies()
     {
         // 优化后的敌人清理逻辑
@@ -450,4 +486,31 @@ public class RoomManager : MonoBehaviour
             }
         }
     }
+
+    public void ReportRoomCleared(Room clearedRoom)
+    {
+        // 更新房间状态
+        clearedRoom.isCleared = true;
+
+        // 可以在这里添加全局清理逻辑
+        Debug.Log($"房间 {clearedRoom.name} 已清除！");
+
+        // 如果需要触发全局事件
+        // OnRoomCleared?.Invoke(clearedRoom);
+    }
+
+    public void CheckRoomCleared()
+    {
+        // 修改为强制检查所有房间
+        foreach (Room room in allRooms)
+        {
+            if (room != null && !room.isCleared && room.aliveEnemies <= 0)
+            {
+                room.UnlockDoors();
+                ReportRoomCleared(room);
+            }
+        }
+    }
+
+
 }

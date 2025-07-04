@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 public class Room : MonoBehaviour
@@ -12,6 +13,15 @@ public class Room : MonoBehaviour
     public bool isStartingRoom = false;
     public bool isBossRoom = false;
     public bool isCleared = false;
+    // 添加房间类型枚举
+    public enum RoomType { Normal, Boss }
+    public RoomType roomType;
+
+    [Header("生成设置")]
+    [Tooltip("敌人生成冷却时间")] 
+    public float spawnInterval = 0.5f;
+    [Tooltip("Boss敌人预制件")] 
+    public GameObject bossEnemyPrefab;
 
     [Header("引用")]
     public Door[] doors;
@@ -27,6 +37,13 @@ public class Room : MonoBehaviour
 
     void Start()
     {
+        // 在Start方法开头添加类型验证
+        if (isBossRoom && roomType != RoomType.Boss)
+        {
+            roomType = RoomType.Boss;
+            Debug.LogWarning($"{name} 房间类型自动修正为Boss");
+        }
+
         // 自动获取所有门（强制检查子对象）
         if (doors.Length == 0)
         {
@@ -178,32 +195,95 @@ public class Room : MonoBehaviour
 
     public void SpawnEnemies()
     {
-        if (enemyPrefab == null)
+        if (roomType == RoomType.Boss)
         {
-            Debug.LogWarning("无法生成敌人，enemyPrefab未赋值");
-            return;
+            if (bossEnemyPrefab != null)
+            {
+                StartCoroutine(SpawnBossWithDelay());
+            }
+            else
+            {
+                Debug.LogError("Boss房间未设置bossEnemyPrefab");
+            }
         }
-        aliveEnemies = enemySpawnPoints.Length;
-        foreach (Transform spawnPoint in enemySpawnPoints)
+        else
         {
-            GameObject enemy = Instantiate(enemyPrefab, spawnPoint.position, Quaternion.identity);
-            enemy.GetComponent<Enemy>().OnDeath += HandleEnemyDeath;
+            EnemyManager.Instance.SpawnEnemiesForRoom(this);
         }
+    }
+    private IEnumerator SpawnBossWithDelay()
+    {
+        yield return new WaitForSeconds(spawnInterval);
+        GameObject boss = Instantiate(bossEnemyPrefab, GetRoomCenter(), Quaternion.identity);
+        boss.GetComponent<Enemy>().OnDeath += HandleEnemyDeath;
+        aliveEnemies = 1;
+    }
+
+    // 添加房间中心位置获取方法
+    public Vector3 GetRoomCenter()
+    {
+        return transform.position + new Vector3(
+            (cameraMaxBounds.x - cameraMinBounds.x) / 2,
+            (cameraMaxBounds.y - cameraMinBounds.y) / 2,
+            0
+        );
+    }
+
+    public Vector2 GetRandomPositionInRoom()
+    {
+        // 修正坐标计算，使用相对房间中心的随机范围
+        float roomWidth = cameraMaxBounds.x - cameraMinBounds.x;
+        float roomHeight = cameraMaxBounds.y - cameraMinBounds.y;
+        
+        return (Vector2)transform.position + new Vector2(
+            Random.Range(-roomWidth * 0.4f, roomWidth * 0.4f),
+            Random.Range(-roomHeight * 0.4f, roomHeight * 0.4f)
+        );
+    }
+    public bool IsPositionInRoom(Vector2 position)
+    {
+        Vector2 localPos = position - (Vector2)transform.position;
+        return localPos.x >= cameraMinBounds.x && localPos.x <= cameraMaxBounds.x &&
+               localPos.y >= cameraMinBounds.y && localPos.y <= cameraMaxBounds.y;
     }
 
     public void HandleEnemyDeath()
     {
-        if (--aliveEnemies <= 0)
+        aliveEnemies = Mathf.Max(aliveEnemies - 1, 0);
+
+        if (aliveEnemies <= 0)
         {
+            isCleared = true;
+            // 添加房间状态更新
+            RoomManager.Instance.CheckRoomCleared();
             foreach (Door door in doors)
             {
-                // 添加连接状态检查
-                if (door.connectedRoom != null && door.doorState == Door.DoorState.Locked)
+                if (door.connectedRoom != null)
                 {
                     door.Unlock();
                 }
             }
+            RoomManager.Instance.ReportRoomCleared(this);
         }
+    }
+
+    // 新增调试绘制
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(1, 0.5f, 0, 0.3f);
+        Gizmos.color = Color.magenta;
+        Vector3 center = new Vector3(
+            transform.position.x + (cameraMinBounds.x + cameraMaxBounds.x) / 2,
+            transform.position.y + (cameraMinBounds.y + cameraMaxBounds.y) / 2,
+            0
+        );
+        Vector3 size = new Vector3(
+            cameraMaxBounds.x - cameraMinBounds.x,
+            cameraMaxBounds.y - cameraMinBounds.y,
+            0.1f
+        );
+        Gizmos.DrawWireCube(center, size);
+    
     }
     
     public void LockAllDoors(Door exceptDoor = null)
@@ -212,7 +292,7 @@ public class Room : MonoBehaviour
         {
             // 跳过未连接的门
             if (door.connectedRoom == null) continue;
-            
+
             if (door != exceptDoor)
             {
                 door.Lock();
@@ -223,4 +303,5 @@ public class Room : MonoBehaviour
             }
         }
     }
+    
 }

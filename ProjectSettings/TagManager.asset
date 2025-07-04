@@ -8,6 +8,8 @@ TagManager:
   - South
   - East
   - West
+  - Wall
+  - Enemy
   layers:
   - Default
   - TransparentFX

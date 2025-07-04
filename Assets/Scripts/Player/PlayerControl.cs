@@ -5,12 +5,18 @@ using System.Linq;
 
 public class PlayerControl : MonoBehaviour
 {
+    [Header("玩家属性")]
+    public float baseDamage = 1f;
+    public float currentDamage;
+    private List<IDamageModifier> damageModifiers = new List<IDamageModifier>();
     public static PlayerControl Instance; // 新增静态实例
 
     //动画组件
     private Animator ani;
     //刚体组件
     private Rigidbody2D rb;
+    // 添加面朝方向属性（公开获取）
+    public Vector2 FaceDirection => new Vector2(lastFaceH, lastFaceV);
 
     void Awake() // 新增Awake方法
     {
@@ -30,6 +36,15 @@ public class PlayerControl : MonoBehaviour
         ani = GetComponent<Animator>();
         //获取刚体组件
         rb = GetComponent<Rigidbody2D>();
+
+        // 获取PlayerShooting组件
+        if (shootingSystem == null)
+        {
+            shootingSystem = GetComponent<PlayerShooting>();
+        }
+
+        // 初始化玩家状态
+        currentDamage = baseDamage;
     }
 
     // 存储最后的面朝方向（默认朝下）
@@ -203,13 +218,40 @@ public class PlayerControl : MonoBehaviour
         ani.SetFloat("Speed", moveDir.magnitude);
         rb.velocity = moveDir.normalized * 4f;
 
+        // 新增：同步面朝方向到射击系统
+        if (shootingSystem != null && (h != 0 || v != 0))
+        {
+            shootingSystem.UpdateFireDirection(new Vector2(lastFaceH, lastFaceV));
+        }
+        // 新增：方向键持续射击检测（仅方向键，不含WASD）
+        bool isShooting = false;
+        foreach (var key in new KeyCode[] { 
+            KeyCode.LeftArrow, KeyCode.RightArrow,
+            KeyCode.DownArrow, KeyCode.UpArrow })
+        {
+            if (Input.GetKey(key))
+            {
+                isShooting = true;
+                break;
+            }
+        }
 
+        // 使用面朝方向进行射击
+        if (isShooting && shootingSystem != null)
+        {
+            shootingSystem.UpdateFireDirection(FaceDirection);
+            shootingSystem.Shoot();
+        }
+        
         // 新增清理功能（添加在Update方法末尾）
         if (Input.GetKeyDown(KeyCode.F9))
         {
             RoomManager.Instance.ClearAllEnemies();
             Debug.Log("已清理所有敌人");
         }
+
+
+
     }
 
     // 添加传送后激活检测
@@ -220,26 +262,26 @@ public class PlayerControl : MonoBehaviour
             CameraController.Instance.target = transform;
         }
     }
-    
+
     // 添加传送方法
     public void TeleportTo(Vector3 position)
     {
         // 确保玩家在传送前停止移动
-        if (rb != null) 
+        if (rb != null)
         {
             rb.velocity = Vector2.zero;
         }
-        
+
         transform.position = position;
-        
+
         // 重置输入状态，防止传送后保持原有方向
         lastDirectionKey = KeyCode.None;
         lastHorizontalKey = KeyCode.None;
         lastVerticalKey = KeyCode.None;
-        
+
         // 重置动画状态
         ani.SetFloat("Speed", 0f);
-        
+
         Debug.Log($"玩家传送至位置: {position}");
     }
 
@@ -249,14 +291,65 @@ public class PlayerControl : MonoBehaviour
         // 确保动画组件和刚体组件已正确获取
         if (ani == null) ani = GetComponent<Animator>();
         if (rb == null) rb = GetComponent<Rigidbody2D>();
-        
+
         // 初始化玩家状态
         lastFaceH = 0f;
         lastFaceV = -1f;
         lastDirectionKey = KeyCode.None;
         lastHorizontalKey = KeyCode.None;
         lastVerticalKey = KeyCode.None;
-        
+
         Debug.Log("玩家控制器初始化完成");
+    }
+
+
+    [Header("组件引用")]
+    public PlayerShooting shootingSystem;
+
+    private List<IProjectileModifier> activeModifiers = new List<IProjectileModifier>();
+
+    public void AddProjectileModifier(IProjectileModifier modifier)
+    {
+        activeModifiers.Add(modifier);
+        UpdateProjectileProperties();
+    }
+
+    void UpdateProjectileProperties()
+    {
+        // 创建属性副本
+        ProjectileProperties newProperties = new ProjectileProperties();
+        newProperties.ResetToBase();
+
+        // 应用所有修改器
+        foreach (var modifier in activeModifiers)
+        {
+            modifier.ApplyEffect(newProperties);
+        }
+
+        // 更新射击系统
+        shootingSystem.UpdateProjectileProperties(newProperties);
+    }
+    
+        // 新增：获取玩家伤害值
+    public float GetPlayerDamage()
+    {
+        return currentDamage;
+    }
+
+    // 新增：添加伤害修改器
+    public void AddDamageModifier(IDamageModifier modifier)
+    {
+        damageModifiers.Add(modifier);
+        UpdateDamage();
+    }
+
+    // 更新伤害计算
+    private void UpdateDamage()
+    {
+        currentDamage = baseDamage;
+        foreach (var modifier in damageModifiers)
+        {
+            currentDamage = modifier.ModifyDamage(currentDamage);
+        }
     }
 }
