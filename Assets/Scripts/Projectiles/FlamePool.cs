@@ -13,31 +13,52 @@ public class FlamePool : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            // 确保预制件已赋值
-            InitializePool(); // 确保立即初始化
-        }
-        else
+        // 加强单例保护
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        InitializePool();
     }
+
 
     public void InitializePool()
     {
+        // 销毁所有现有子弹
+        foreach (var flame in allFlames.ToArray())
+        {
+            if (flame != null && flame.gameObject != null)
+            {
+                Destroy(flame.gameObject);
+            }
+        }
+        
+        // 重新初始化集合
         availableFlames = new Queue<FlameController>();
-
+        allFlames = new List<FlameController>();
+        
+        // 创建新子弹
         for (int i = 0; i < initialPoolSize; i++)
         {
             GameObject flame = Instantiate(flamePrefab);
             FlameController fc = flame.GetComponent<FlameController>();
-            fc.gameObject.tag = "PlayerProjectile"; // 明确标记玩家子弹
-            availableFlames.Enqueue(fc);
+            fc.gameObject.tag = "PlayerProjectile";
             flame.SetActive(false);
+            availableFlames.Enqueue(fc);
+            allFlames.Add(fc);
         }
+        
+        Debug.Log($"子弹对象池已初始化，大小: {initialPoolSize}");
+    }
     
+    // 新增获取所有子弹的方法
+    public List<FlameController> GetAllFlames()
+    {
+        return new List<FlameController>(allFlames);
     }
 
     void CreateNewFlame()
@@ -72,10 +93,6 @@ public class FlamePool : MonoBehaviour
         {
             flame.properties = newProperties;
         }
-    }
-    public List<FlameController> GetAllFlames()
-    {
-        return new List<FlameController>(allFlames);
     }
 
 }

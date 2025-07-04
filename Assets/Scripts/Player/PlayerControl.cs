@@ -8,26 +8,37 @@ public class PlayerControl : MonoBehaviour
     [Header("玩家属性")]
     public float baseDamage = 1f;
     public float currentDamage;
+    public float baseMoveSpeed = 4f;
+    public float currentMoveSpeed;
+    // 在现有属性区域新增
+    private float moveSpeedMultiplier = 1f;
+    // 在现有属性下新增
+    private float damageMultiplier = 1f;
     private List<IDamageModifier> damageModifiers = new List<IDamageModifier>();
     public static PlayerControl Instance; // 新增静态实例
 
     //动画组件
     private Animator ani;
     //刚体组件
-    private Rigidbody2D rb;
+    public Rigidbody2D rb;
     // 添加面朝方向属性（公开获取）
     public Vector2 FaceDirection => new Vector2(lastFaceH, lastFaceV);
 
     void Awake() // 新增Awake方法
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        // 修复重复玩家问题
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        // 确保玩家在场景加载后可见
+        gameObject.SetActive(true);
+
     }
 
     void Start()
@@ -45,6 +56,7 @@ public class PlayerControl : MonoBehaviour
 
         // 初始化玩家状态
         currentDamage = baseDamage;
+        currentMoveSpeed = baseMoveSpeed;
     }
 
     // 存储最后的面朝方向（默认朝下）
@@ -216,7 +228,8 @@ public class PlayerControl : MonoBehaviour
         // 设置刚体速度（修复移动计算）
         Vector2 moveDir = new Vector2(h, v);
         ani.SetFloat("Speed", moveDir.magnitude);
-        rb.velocity = moveDir.normalized * 4f;
+        rb.velocity = moveDir.normalized * currentMoveSpeed;
+
 
         // 新增：同步面朝方向到射击系统
         if (shootingSystem != null && (h != 0 || v != 0))
@@ -225,7 +238,7 @@ public class PlayerControl : MonoBehaviour
         }
         // 新增：方向键持续射击检测（仅方向键，不含WASD）
         bool isShooting = false;
-        foreach (var key in new KeyCode[] { 
+        foreach (var key in new KeyCode[] {
             KeyCode.LeftArrow, KeyCode.RightArrow,
             KeyCode.DownArrow, KeyCode.UpArrow })
         {
@@ -242,14 +255,13 @@ public class PlayerControl : MonoBehaviour
             shootingSystem.UpdateFireDirection(FaceDirection);
             shootingSystem.Shoot();
         }
-        
+
         // 新增清理功能（添加在Update方法末尾）
         if (Input.GetKeyDown(KeyCode.F9))
         {
             RoomManager.Instance.ClearAllEnemies();
             Debug.Log("已清理所有敌人");
         }
-
 
 
     }
@@ -266,41 +278,94 @@ public class PlayerControl : MonoBehaviour
     // 添加传送方法
     public void TeleportTo(Vector3 position)
     {
-        // 确保玩家在传送前停止移动
+        // 新增位置验证
+        if (float.IsNaN(position.x) || float.IsNaN(position.y))
+        {
+            position = Vector3.zero;
+            Debug.LogWarning("检测到非法坐标，已重置");
+        }
+
+        // 确保Transform组件存在
+        if (transform == null)
+        {
+            Debug.LogError("Transform组件丢失！");
+            return;
+        }
+
+        // 直接设置位置
+        transform.position = position;
+
+        // 确保刚体存在
         if (rb != null)
         {
             rb.velocity = Vector2.zero;
+            rb.MovePosition(position);
+            rb.WakeUp();
         }
 
-        transform.position = position;
+        // 强制重置动画状态
+        if (ani != null)
+        {
+            ani.Play("Idle", 0, 0f);
+            ani.SetFloat("Speed", 0f);
+        }
 
-        // 重置输入状态，防止传送后保持原有方向
+        // 强制启用渲染器和碰撞体
+        SpriteRenderer renderer = GetComponent<SpriteRenderer>();
+        if (renderer != null)
+        {
+            renderer.enabled = true;
+            renderer.forceRenderingOff = false;
+        }
+
+        Collider2D collider = GetComponent<Collider2D>();
+        if (collider != null)
+        {
+            collider.enabled = true;
+        }
+
+        // 重置输入状态
         lastDirectionKey = KeyCode.None;
         lastHorizontalKey = KeyCode.None;
         lastVerticalKey = KeyCode.None;
+        // 重置输入状态
+        ResetInputState();
 
-        // 重置动画状态
-        ani.SetFloat("Speed", 0f);
-
-        Debug.Log($"玩家传送至位置: {position}");
+        Debug.Log($"玩家传送完成: {position}");
     }
+
 
     // 添加初始化方法
     public void Initialize()
     {
-        // 确保动画组件和刚体组件已正确获取
+        // 确保组件获取
         if (ani == null) ani = GetComponent<Animator>();
         if (rb == null) rb = GetComponent<Rigidbody2D>();
 
-        // 初始化玩家状态
+        // 强制重置位置
+        transform.position = Vector3.zero;
+
+        // 重置状态
         lastFaceH = 0f;
         lastFaceV = -1f;
         lastDirectionKey = KeyCode.None;
         lastHorizontalKey = KeyCode.None;
         lastVerticalKey = KeyCode.None;
 
-        Debug.Log("玩家控制器初始化完成");
+        // 确保碰撞体和渲染器启用
+        if (TryGetComponent<Collider2D>(out var collider))
+        {
+            collider.enabled = true;
+        }
+
+        if (TryGetComponent<SpriteRenderer>(out var renderer))
+        {
+            renderer.enabled = true;
+        }
+
+        Debug.Log("玩家控制器完全初始化");
     }
+
 
 
     [Header("组件引用")]
@@ -314,7 +379,7 @@ public class PlayerControl : MonoBehaviour
         UpdateProjectileProperties();
     }
 
-    void UpdateProjectileProperties()
+    public void UpdateProjectileProperties()
     {
         // 创建属性副本
         ProjectileProperties newProperties = new ProjectileProperties();
@@ -326,11 +391,17 @@ public class PlayerControl : MonoBehaviour
             modifier.ApplyEffect(newProperties);
         }
 
-        // 更新射击系统
-        shootingSystem.UpdateProjectileProperties(newProperties);
+        // 确保射击系统更新属性
+        if (shootingSystem != null)
+        {
+            shootingSystem.UpdateProjectileProperties(new ProjectileProperties()
+            {
+                damageMultiplier = this.damageMultiplier
+            });
+        }
     }
-    
-        // 新增：获取玩家伤害值
+
+    // 新增：获取玩家伤害值
     public float GetPlayerDamage()
     {
         return currentDamage;
@@ -346,10 +417,74 @@ public class PlayerControl : MonoBehaviour
     // 更新伤害计算
     private void UpdateDamage()
     {
-        currentDamage = baseDamage;
+        currentDamage = baseDamage * damageMultiplier;
         foreach (var modifier in damageModifiers)
         {
             currentDamage = modifier.ModifyDamage(currentDamage);
         }
+    }
+    // 新增保存方法
+    public void SavePlayerData()
+    {
+        PlayerPrefs.SetFloat("MoveSpeedMultiplier", moveSpeedMultiplier);
+        PlayerPrefs.SetFloat("DamageMultiplier", damageMultiplier);
+        PlayerPrefs.SetFloat("PlayerDamage", currentDamage);
+        PlayerPrefs.SetFloat("MoveSpeed", currentMoveSpeed);
+        PlayerPrefs.Save();
+    }
+    // 新增加载方法
+    public void LoadPlayerData()
+    {
+        moveSpeedMultiplier = PlayerPrefs.GetFloat("MoveSpeedMultiplier", 1f);
+        currentMoveSpeed = baseMoveSpeed * moveSpeedMultiplier;
+        damageMultiplier = PlayerPrefs.GetFloat("DamageMultiplier", 1f);
+        currentDamage = PlayerPrefs.GetFloat("PlayerDamage", 1f); // 默认值1
+        currentMoveSpeed = PlayerPrefs.GetFloat("MoveSpeed", 4f);
+    }
+
+    // 新增输入状态重置方法（关键修复）
+    public void ResetInputState()
+    {
+        lastDirectionKey = KeyCode.None;
+        lastHorizontalKey = KeyCode.None;
+        lastVerticalKey = KeyCode.None;
+        lastFaceH = 0f;
+        lastFaceV = -1f;
+
+        // 重置刚体速度和动画状态
+        if (rb != null) rb.velocity = Vector2.zero;
+        if (ani != null)
+        {
+            ani.SetFloat("Horizontal", 0);
+            ani.SetFloat("Vertical", -1);
+            ani.SetFloat("Speed", 0);
+            ani.Play("Idle", 0, 0f);
+        }
+
+        Debug.Log("玩家输入状态已重置");
+    }
+    public void AddDamageMultiplier(float multiplier)
+    {
+        damageMultiplier += multiplier;
+        UpdateDamage();
+    }
+
+
+    // 在现有属性下新增
+    public float GetDamageMultiplier()
+    {
+        return damageMultiplier;
+    }
+
+    // 在PlayerControl.cs中添加
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        Debug.Log($"玩家碰撞到: {other.gameObject.name}");
+    }
+    
+    public void AddMoveSpeedMultiplier(float multiplier)
+    {
+        moveSpeedMultiplier += multiplier;
+        currentMoveSpeed = baseMoveSpeed * moveSpeedMultiplier;
     }
 }

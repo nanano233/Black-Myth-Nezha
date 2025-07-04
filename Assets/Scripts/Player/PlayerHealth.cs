@@ -5,34 +5,65 @@ using UnityEngine;
 
 public class PlayerHealth : MonoBehaviour
 {
+    [Header("血量设置")]
     public int damage = 1; // 玩家受到伤害的值
     public int maxHealth = 6;
-    private int currentHealth;
+    public int currentHealth;
 
     // 新增受击状态相关参数
     public float invincibleDuration = 1f;
     private bool isInvincible = false;
     private Animator animator;
     private SpriteRenderer spriteRenderer; // 新增渲染器引用
+    public event System.Action<int, int> OnHealthChanged;
+    public static PlayerHealth Instance;
+
 
     private void Start()
     {
+        // 加载保存的血量
+        currentHealth = PlayerPrefs.GetInt("PlayerHealth", maxHealth);
+        maxHealth = PlayerPrefs.GetInt("MaxHealth", maxHealth);
         currentHealth = maxHealth;
         spriteRenderer = GetComponent<SpriteRenderer>(); // 获取渲染器组件
+        OnHealthChanged?.Invoke(currentHealth, maxHealth); // 初始通知
+    }
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        
+        LoadPlayerHealth();
+    }
+
+    void LoadPlayerHealth()
+    {
+        currentHealth = PlayerPrefs.GetInt("PlayerHealth", maxHealth);
+        maxHealth = PlayerPrefs.GetInt("MaxHealth", maxHealth);
     }
 
     public void TakeDamage()
     {
         if (isInvincible) return;
-        
-        currentHealth -= damage;
+
+        currentHealth = Mathf.Clamp(currentHealth - damage, 0, maxHealth);
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
         // 移除动画触发，改为闪烁效果
         StartCoroutine(InvincibilityFrame());
-        
+
         if (currentHealth <= 0)
         {
             Die();
         }
+
+        // 新增保存
+        PlayerPrefs.SetInt("PlayerHealth", currentHealth);
+        PlayerPrefs.SetInt("MaxHealth", maxHealth);
     }
 
     // 新增无敌时间协程
@@ -40,7 +71,7 @@ public class PlayerHealth : MonoBehaviour
     {
         isInvincible = true;
         float endTime = Time.time + invincibleDuration;
-        
+
         // 闪烁逻辑
         while (Time.time < endTime)
         {
@@ -49,7 +80,7 @@ public class PlayerHealth : MonoBehaviour
             spriteRenderer.color = Color.white; // 恢复
             yield return new WaitForSeconds(0.05f);
         }
-        
+
         isInvincible = false;
     }
     private void Die()
@@ -72,7 +103,27 @@ public class PlayerHealth : MonoBehaviour
 
         // 改为通过GameManager处理
         GameManager.Instance?.HandlePlayerDeath();
-    
+
+    }
+        // 在现有字段下新增
+    public void Heal(int amount)
+    {
+        currentHealth = Mathf.Clamp(currentHealth + amount, 0, maxHealth);
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        PlayerPrefs.SetInt("PlayerHealth", currentHealth);
+    }
+
+    public void IncreaseMaxHealth(int amount)
+    {
+        maxHealth += amount;
+        currentHealth = maxHealth;
+        
+        // 确保事件触发
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+        PlayerPrefs.SetInt("MaxHealth", maxHealth);
+        
+        // 新增调试日志
+        Debug.Log($"最大生命值更新：{maxHealth}, 当前：{currentHealth}");
     }
 
 }

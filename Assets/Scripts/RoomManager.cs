@@ -23,6 +23,8 @@ public class RoomManager : MonoBehaviour
     [Header("生成参数")]
     [Range(0.1f, 1f)] public float branchChance = 0.35f;
     public int maxGenerationDepth = 5;
+    // 添加生成完成标志
+    [HideInInspector] public bool generationComplete = false;
 
     private HashSet<Vector2Int> occupiedPositions = new HashSet<Vector2Int>();
     private Queue<Room> generationQueue = new Queue<Room>();
@@ -52,6 +54,32 @@ public class RoomManager : MonoBehaviour
         {
             Debug.LogError("起始房间生成失败");
         }
+
+        // 确保起始房间有效
+        if (allRooms.Count > 0 && allRooms[0] != null)
+        {
+            currentRoom = allRooms[0];
+            currentRoom.ActivateRoom();
+
+            // 添加摄像机初始化
+            if (CameraController.Instance != null)
+            {
+                CameraController.Instance.SetBounds(
+                    currentRoom.cameraMinBounds,
+                    currentRoom.cameraMaxBounds
+                );
+                CameraController.Instance.MoveTo(currentRoom.transform.position);
+            }
+
+            // 添加玩家位置日志
+            Debug.Log($"起始房间位置: {currentRoom.transform.position}");
+        }
+        else
+        {
+            Debug.LogError("无法找到有效的起始房间！");
+        }
+        generationComplete = true;
+        Debug.Log("房间生成完成");
     }
 
     void GenerateRooms()
@@ -489,28 +517,33 @@ public class RoomManager : MonoBehaviour
 
     public void ReportRoomCleared(Room clearedRoom)
     {
-        // 更新房间状态
-        clearedRoom.isCleared = true;
-
-        // 可以在这里添加全局清理逻辑
-        Debug.Log($"房间 {clearedRoom.name} 已清除！");
-
-        // 如果需要触发全局事件
-        // OnRoomCleared?.Invoke(clearedRoom);
-    }
-
-    public void CheckRoomCleared()
-    {
-        // 修改为强制检查所有房间
-        foreach (Room room in allRooms)
+        // 添加房间类型检查
+        if (clearedRoom.isStartingRoom)
         {
-            if (room != null && !room.isCleared && room.aliveEnemies <= 0)
-            {
-                room.UnlockDoors();
-                ReportRoomCleared(room);
-            }
+            Debug.Log($"特殊房间 {clearedRoom.name} 不生成道具");
+            return;
+        }
+
+        clearedRoom.isCleared = true;
+        
+        if (clearedRoom.TryGetComponent<ItemSpawner>(out var spawner))
+        {
+            spawner.SpawnRandomItem();
+            Debug.Log($"在房间 {clearedRoom.name} 生成道具");
         }
     }
 
+
+    public void CheckRoomCleared()
+    {
+        // 修改为仅检测当前房间
+        if (currentRoom != null && !currentRoom.isCleared && currentRoom.aliveEnemies <= 0)
+        {
+            currentRoom.UnlockDoors();
+            ReportRoomCleared(currentRoom);
+            
+            Debug.Log($"当前房间 {currentRoom.name} 已清除");
+        }
+    }
 
 }

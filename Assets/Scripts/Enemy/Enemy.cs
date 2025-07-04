@@ -58,6 +58,11 @@ public abstract class Enemy : MonoBehaviour
 
     protected virtual void Start()
     {
+
+        float difficulty = 1 + (Room.currentFloor - 1) * 0.3f;
+        maxHealth = Mathf.RoundToInt(maxHealth * difficulty);
+        damage = Mathf.RoundToInt(damage * difficulty);
+
         currentHealth = maxHealth;
         player = GameObject.FindGameObjectWithTag("Player").transform;
         spriteRenderer = GetComponent<SpriteRenderer>();

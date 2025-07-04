@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 public class Room : MonoBehaviour
 {
+    [Header("关卡传送")]
+    public GameObject levelPortalPrefab; // 需要拖入预制件
+    public static int currentFloor = 1; // 当前层数
     // 摄像机边界
     [Header("摄像机边界")]
     public Vector2 cameraMinBounds;
@@ -76,6 +79,10 @@ public class Room : MonoBehaviour
                 door.doorState = Door.DoorState.Unconnected;
                 door.Initialize();
             }
+        }
+        foreach (Door door in doors)
+        {
+            door.parentRoom = this; // 设置门的父房间
         }
         
         // 特殊处理起始房间
@@ -255,6 +262,21 @@ public class Room : MonoBehaviour
         {
             isCleared = true;
             // 添加房间状态更新
+
+            // 新增Boss房特殊逻辑
+            if (isBossRoom)
+            {
+                // 生成传送门
+                if (levelPortalPrefab != null)
+                {
+                    Instantiate(levelPortalPrefab, GetRoomCenter(), Quaternion.identity);
+                }
+                else
+                {
+                    Debug.LogWarning("未分配关卡传送门预制件");
+                }
+            }
+
             RoomManager.Instance.CheckRoomCleared();
             foreach (Door door in doors)
             {

@@ -146,10 +146,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lockedSprite: {fileID: 21300000, guid: 5514be1c519f4d54380730151d004538, type: 3}
   unlockedSprite: {fileID: 21300000, guid: d2a95084a0c69464da0a5c73bdfe3e9f, type: 3}
+  bossLockedSprite: {fileID: 21300000, guid: 992bbb1e12b40be40a7b6fee59a5546b, type: 3}
+  bossUnlockedSprite: {fileID: 21300000, guid: be25a82fd2398114fa5c8869d2e9368a, type: 3}
   doorState: 0
   wallCollider: {fileID: 5784419983399143736}
   triggerCollider: {fileID: 2006497485110184496}
   connectedRoom: {fileID: 0}
+  parentRoom: {fileID: 0}
   doorSprite: {fileID: 3427324481382434142}
   lockedColor: {r: 1, g: 0, b: 0, a: 1}
   unlockedColor: {r: 0, g: 1, b: 0, a: 1}
@@ -406,10 +409,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lockedSprite: {fileID: 21300000, guid: 5514be1c519f4d54380730151d004538, type: 3}
   unlockedSprite: {fileID: 21300000, guid: d2a95084a0c69464da0a5c73bdfe3e9f, type: 3}
+  bossLockedSprite: {fileID: 21300000, guid: 992bbb1e12b40be40a7b6fee59a5546b, type: 3}
+  bossUnlockedSprite: {fileID: 21300000, guid: be25a82fd2398114fa5c8869d2e9368a, type: 3}
   doorState: 0
   wallCollider: {fileID: 534625780829279791}
   triggerCollider: {fileID: 4914346396345970340}
   connectedRoom: {fileID: 0}
+  parentRoom: {fileID: 0}
   doorSprite: {fileID: 6388904092358574170}
   lockedColor: {r: 1, g: 0, b: 0, a: 1}
   unlockedColor: {r: 0, g: 1, b: 0, a: 1}
@@ -1260,10 +1266,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lockedSprite: {fileID: 21300000, guid: 5514be1c519f4d54380730151d004538, type: 3}
   unlockedSprite: {fileID: 21300000, guid: d2a95084a0c69464da0a5c73bdfe3e9f, type: 3}
+  bossLockedSprite: {fileID: 21300000, guid: 992bbb1e12b40be40a7b6fee59a5546b, type: 3}
+  bossUnlockedSprite: {fileID: 21300000, guid: be25a82fd2398114fa5c8869d2e9368a, type: 3}
   doorState: 0
   wallCollider: {fileID: 5436950980174885334}
   triggerCollider: {fileID: 2963547585790117003}
   connectedRoom: {fileID: 0}
+  parentRoom: {fileID: 0}
   doorSprite: {fileID: 8772398934467966294}
   lockedColor: {r: 1, g: 0, b: 0, a: 1}
   unlockedColor: {r: 0, g: 1, b: 0, a: 1}
@@ -1500,6 +1509,7 @@ GameObject:
   - component: {fileID: 3927279320020862590}
   - component: {fileID: 6010134296738279736}
   - component: {fileID: 3403143862563381830}
+  - component: {fileID: 302301270387845573}
   m_Layer: 0
   m_Name: RoomPrefab
   m_TagString: Untagged
@@ -1634,6 +1644,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbc7010ebba913a4b83ff0307ad1f2f3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  levelPortalPrefab: {fileID: 1026233360689958951, guid: 31659864345a317479534d34ef5091f1, type: 3}
   cameraMinBounds: {x: 0, y: 0}
   cameraMaxBounds: {x: 0, y: 0}
   isStartingRoom: 0
@@ -1657,6 +1668,23 @@ MonoBehaviour:
   gridPosition: {x: 0, y: 0}
   isVisited: 0
   aliveEnemies: 0
+--- !u!114 &302301270387845573
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6971359142408758891}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9aa6d211be60ca54da5d4cfcb7f9e930, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  itemPrefabs:
+  - {fileID: 2902439954655178610, guid: 559d5d01217ad8e46b63a75af3ec5895, type: 3}
+  - {fileID: 7982870742654956619, guid: 91f2023dbb24de547b872e462709a3f3, type: 3}
+  - {fileID: 8631767892342595363, guid: 9ea16862bae541a4baa3704aa10de13f, type: 3}
+  - {fileID: 7889399906659971336, guid: 8804fdd29d1e5624c9e9d22d9082a80f, type: 3}
 --- !u!1 &8269934293049622183
 GameObject:
   m_ObjectHideFlags: 0
@@ -1803,10 +1831,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lockedSprite: {fileID: 21300000, guid: 5514be1c519f4d54380730151d004538, type: 3}
   unlockedSprite: {fileID: 21300000, guid: d2a95084a0c69464da0a5c73bdfe3e9f, type: 3}
+  bossLockedSprite: {fileID: 21300000, guid: 992bbb1e12b40be40a7b6fee59a5546b, type: 3}
+  bossUnlockedSprite: {fileID: 21300000, guid: be25a82fd2398114fa5c8869d2e9368a, type: 3}
   doorState: 0
   wallCollider: {fileID: 3378627554647672702}
   triggerCollider: {fileID: 7718139153489689648}
   connectedRoom: {fileID: 0}
+  parentRoom: {fileID: 0}
   doorSprite: {fileID: 1725020743982021477}
   lockedColor: {r: 1, g: 0, b: 0, a: 1}
   unlockedColor: {r: 0, g: 1, b: 0, a: 1}

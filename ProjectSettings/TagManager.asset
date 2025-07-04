@@ -10,6 +10,10 @@ TagManager:
   - West
   - Wall
   - Enemy
+  - DontDestroyOnLoad
+  - EnemyProjectile
+  - PlayerProjectile
+  - Projectile
   layers:
   - Default
   - TransparentFX
@@ -19,7 +23,7 @@ TagManager:
   - UI
   - 
   - 
-  - 
+  - Items
   - Door
   - 
   - 

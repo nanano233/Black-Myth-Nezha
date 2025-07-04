@@ -8,6 +8,10 @@ public class Door : MonoBehaviour
     [Header("精灵设置")]
     public Sprite lockedSprite;
     public Sprite unlockedSprite;
+    [Header("Boss房特殊精灵")]  // 新增Boss房专用精灵
+    public Sprite bossLockedSprite; 
+    public Sprite bossUnlockedSprite;
+
     [Header("门状态")]
     public DoorState doorState = DoorState.Unconnected;
     [Header("碰撞体设置")]
@@ -18,6 +22,8 @@ public class Door : MonoBehaviour
     
     [Header("连接房间")]
     public Room connectedRoom; // 修改访问权限为public
+    [Header("所属房间")]
+    public Room parentRoom;
     [Header("引用")]
     [SerializeField] private SpriteRenderer doorSprite; // 修改为SerializeField并添加自动获取
 
@@ -108,10 +114,14 @@ public class Door : MonoBehaviour
             }
             // 新增精灵切换逻辑
             doorSprite.enabled = doorState != DoorState.Unconnected;
+            // 根据房间类型选择精灵
+            bool isBossDoor = (parentRoom != null && parentRoom.isBossRoom) || 
+                            (connectedRoom != null && connectedRoom.isBossRoom);
+            
             doorSprite.sprite = doorState switch
             {
-                DoorState.Locked => lockedSprite,
-                DoorState.Unlocked => unlockedSprite,
+                DoorState.Locked => isBossDoor ? bossLockedSprite : lockedSprite,
+                DoorState.Unlocked => isBossDoor ? bossUnlockedSprite : unlockedSprite,
                 _ => null
             };
         }
